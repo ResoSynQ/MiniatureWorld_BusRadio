@@ -1,0 +1,361 @@
+/* ============================================================
+   オレンジゆずるバス・ナイトツアー Ver 4.0
+   メルヘン調の夜の街テーマ 🌙
+   ============================================================ */
+body, html, #map {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    font-family: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', 'Yu Gothic UI', sans-serif;
+    overflow: hidden;
+    background: #17203d;
+}
+
+/* 🌙 夜スタイルはMapLibreのベクタースタイル(app.js内 nightStyle)で描画 */
+.maplibregl-canvas { outline: none; }
+.maplibregl-ctrl-attrib { background: rgba(20, 26, 54, 0.7) !important; }
+.maplibregl-ctrl-attrib, .maplibregl-ctrl-attrib a { color: #8d97c4 !important; font-size: 10px; }
+
+/* 🌌 青い夜の環境光（地図の上にやわらかく重ねる） */
+#night-ambient {
+    position: fixed; inset: 0; z-index: 640; pointer-events: none;
+    background:
+        radial-gradient(120% 90% at 50% 30%, rgba(70, 110, 190, 0.06) 0%, rgba(24, 34, 74, 0.20) 100%),
+        linear-gradient(180deg, rgba(40, 60, 120, 0.10) 0%, rgba(16, 24, 56, 0.18) 100%);
+    mix-blend-mode: normal;
+    display: none;
+}
+body.night #night-ambient { display: block; }
+/* 🌅 朝: やわらかな金色の朝日が差し、空気は澄んだ水色 */
+body.morning #night-ambient {
+    background:
+        linear-gradient(200deg, rgba(255, 226, 150, 0.16) 0%, rgba(255, 244, 214, 0.05) 40%, rgba(160, 200, 235, 0.10) 100%);
+}
+body.morning #fog-a { background: radial-gradient(circle, rgba(255, 250, 230, 0.14) 0%, rgba(255, 250, 230, 0.06) 40%, rgba(255, 250, 230, 0) 65%); }
+body.morning #fog-b { background: radial-gradient(circle, rgba(200, 230, 255, 0.10) 0%, rgba(200, 230, 255, 0.05) 40%, rgba(200, 230, 255, 0) 65%); }
+body.morning #vignette {
+    background: radial-gradient(ellipse 75% 68% at 50% 45%, rgba(0,0,0,0) 60%, rgba(120, 130, 160, 0.22) 100%);
+}
+/* 朝は街路灯を消灯 */
+body.morning .lamp-marker { display: none; }
+/* 朝の字幕は紙のような明るいウインドウに */
+body.morning #subtitle {
+    background: rgba(255, 252, 242, 0.92);
+    border-color: #e8b86d;
+}
+body.morning #subtitle-text { color: #6b4423; text-shadow: none; }
+body.morning #subtitle-header { color: #c07a2a; text-shadow: none; }
+
+/* 🌇 夕暮れ: あかね色の空あかりが上から差し、足元は紫に沈む */
+body.evening #night-ambient {
+    background:
+        linear-gradient(180deg, rgba(255, 150, 80, 0.16) 0%, rgba(255, 110, 90, 0.07) 34%, rgba(90, 60, 130, 0.16) 100%),
+        radial-gradient(120% 80% at 50% 0%, rgba(255, 180, 100, 0.12) 0%, rgba(70, 45, 100, 0.12) 100%);
+}
+
+/* 🌫️ ゆっくり流れるやわらかい霧 */
+.fog {
+    position: fixed; z-index: 645; pointer-events: none;
+    width: 140vmax; height: 140vmax; border-radius: 50%;
+    display: none;
+}
+body.night .fog { display: block; }
+#fog-a {
+    left: -40vmax; top: -50vmax;
+    background: radial-gradient(circle, rgba(190, 210, 255, 0.10) 0%, rgba(190, 210, 255, 0.05) 40%, rgba(190, 210, 255, 0) 65%);
+    animation: fog-drift-a 46s ease-in-out infinite alternate;
+}
+body.evening #fog-a {
+    background: radial-gradient(circle, rgba(255, 200, 140, 0.10) 0%, rgba(255, 200, 140, 0.05) 40%, rgba(255, 200, 140, 0) 65%);
+}
+#fog-b {
+    right: -50vmax; bottom: -55vmax;
+    background: radial-gradient(circle, rgba(150, 235, 200, 0.08) 0%, rgba(150, 235, 200, 0.04) 40%, rgba(150, 235, 200, 0) 65%);
+    animation: fog-drift-b 58s ease-in-out infinite alternate;
+}
+body.evening #fog-b {
+    background: radial-gradient(circle, rgba(255, 160, 170, 0.08) 0%, rgba(255, 160, 170, 0.04) 40%, rgba(255, 160, 170, 0) 65%);
+}
+@keyframes fog-drift-a { from { transform: translate(0, 0); } to { transform: translate(9vmax, 6vmax); } }
+@keyframes fog-drift-b { from { transform: translate(0, 0); } to { transform: translate(-8vmax, -5vmax); } }
+
+/* 🔍 画面のふちをやわらかくぼかす（被写界深度風） */
+#dof-blur {
+    position: fixed; inset: 0; z-index: 648; pointer-events: none;
+    backdrop-filter: blur(2.5px);
+    -webkit-backdrop-filter: blur(2.5px);
+    mask-image: radial-gradient(ellipse 62% 55% at 50% 46%, transparent 58%, black 92%);
+    -webkit-mask-image: radial-gradient(ellipse 62% 55% at 50% 46%, transparent 58%, black 92%);
+    display: none;
+}
+body.night.dof #dof-blur { display: block; }
+
+/* 🖼️ 夜色のビネット（絵本のページのような包まれ感） */
+#vignette {
+    position: fixed; inset: 0; z-index: 650; pointer-events: none;
+    background: radial-gradient(ellipse 75% 68% at 50% 45%, rgba(0,0,0,0) 55%, rgba(14, 20, 46, 0.38) 100%);
+    display: none;
+}
+body.night #vignette { display: block; }
+body.evening #vignette {
+    background: radial-gradient(ellipse 75% 68% at 50% 45%, rgba(0,0,0,0) 55%, rgba(52, 30, 66, 0.4) 100%);
+}
+
+/* ============ 🎀 メルヘン調UI 共通 ============ */
+
+/* 上部ステータスパネル: 絵本の看板ふう */
+#status-panel {
+    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 14px); left: 50%; transform: translateX(-50%);
+    z-index: 950;
+    background: linear-gradient(180deg, #fff8ec 0%, #ffeecf 100%);
+    border: 2.5px solid #e8b86d; border-radius: 20px;
+    box-shadow: 0 4px 14px rgba(20, 25, 60, 0.45), inset 0 1px 0 rgba(255,255,255,0.9);
+    padding: 8px 18px; display: flex; align-items: center; gap: 10px;
+    max-width: calc(100vw - 140px);
+}
+#status-icon { font-size: 24px; filter: drop-shadow(0 0 6px rgba(255, 190, 90, 0.8)); }
+#status-texts { display: flex; flex-direction: column; line-height: 1.35; }
+#status-main { font-weight: 700; font-size: 15px; color: #7a4a1d; white-space: nowrap; }
+#status-sub  { font-size: 11px; color: #a5744a; white-space: nowrap; font-weight: 500; }
+#status-panel.running { border-color: #f0a850; box-shadow: 0 4px 18px rgba(255, 170, 70, 0.35), 0 4px 14px rgba(20,25,60,0.4); }
+#status-panel.running #status-main { color: #d97a1a; }
+
+/* 右上の丸ボタン: あめ玉ふう */
+.corner-btn {
+    position: fixed; right: 15px; z-index: 900;
+    background: linear-gradient(180deg, #fff8ec 0%, #ffe9c4 100%);
+    border: 2.5px solid #e8b86d; border-radius: 16px;
+    width: 46px; height: 46px; cursor: pointer; font-size: 21px;
+    box-shadow: 0 3px 10px rgba(20, 25, 60, 0.5), inset 0 1px 0 rgba(255,255,255,0.9);
+    display: flex; justify-content: center; align-items: center;
+    transition: transform 0.15s ease;
+}
+.corner-btn:active { transform: scale(0.92); }
+.corner-btn.active {
+    background: linear-gradient(180deg, #ffca7a 0%, #f5a942 100%);
+    border-color: #d98c2b;
+    box-shadow: 0 0 14px rgba(255, 180, 80, 0.7), 0 3px 10px rgba(20,25,60,0.5);
+}
+
+/* 下部コントロールバー */
+#control-bar {
+    position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+    left: 50%; transform: translateX(-50%);
+    z-index: 900; display: flex; gap: 10px; align-items: center;
+}
+#start-btn {
+    padding: 14px 30px; border: 2.5px solid #ffdba0; border-radius: 999px;
+    font-family: inherit; font-size: 16px; font-weight: 700; color: #5c3410; cursor: pointer;
+    background: linear-gradient(180deg, #ffd98a 0%, #f7a94a 100%);
+    box-shadow: 0 0 18px rgba(255, 185, 90, 0.55), 0 5px 14px rgba(15, 20, 50, 0.6);
+    transition: all 0.25s ease; white-space: nowrap;
+}
+#start-btn.running {
+    background: linear-gradient(180deg, #a9c4ff 0%, #6f8fdd 100%);
+    border-color: #cfdcff; color: #1c2a55;
+    box-shadow: 0 0 18px rgba(130, 160, 255, 0.55), 0 5px 14px rgba(15, 20, 50, 0.6);
+}
+#start-btn:active { transform: scale(0.96); }
+#speed-select {
+    padding: 11px 8px; border-radius: 14px; border: 2.5px solid #e8b86d;
+    background: linear-gradient(180deg, #fff8ec 0%, #ffe9c4 100%);
+    font-family: inherit; font-size: 13px; font-weight: 700; color: #7a4a1d;
+    box-shadow: 0 3px 10px rgba(20, 25, 60, 0.5); cursor: pointer;
+}
+
+/* 💬 トースト: 星あかりのおしらせ */
+#toast {
+    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 78px); left: 50%;
+    transform: translateX(-50%) translateY(-16px);
+    z-index: 980;
+    background: linear-gradient(180deg, #fffdf6 0%, #fdf1d7 100%);
+    color: #6b4423;
+    padding: 12px 20px; border-radius: 18px;
+    border: 2px solid #eec27e;
+    font-size: 14px; font-weight: 700;
+    box-shadow: 0 0 16px rgba(255, 200, 110, 0.4), 0 6px 16px rgba(10, 15, 40, 0.55);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    max-width: 86vw; text-align: center;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* 📻 箱庭ラジオ 字幕ウインドウ（大きめ・固定サイズ） */
+#subtitle {
+    position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 88px);
+    left: 50%; transform: translateX(-50%) translateY(10px);
+    z-index: 940;
+    width: min(92vw, 640px);
+    height: 186px;                     /* ★ウインドウの大きさは固定(最大6行の塊に対応) */
+    box-sizing: border-box;
+    background: rgba(28, 24, 52, 0.86);
+    border: 2.5px solid rgba(255, 214, 140, 0.8);
+    border-radius: 20px;
+    padding: 30px 22px 12px;
+    box-shadow: 0 0 20px rgba(255, 200, 110, 0.28), 0 8px 18px rgba(8, 12, 34, 0.6);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.45s ease, transform 0.45s ease;
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    overflow: hidden;
+}
+#subtitle.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#subtitle-header {
+    position: absolute; top: 8px; left: 18px;
+    font-size: 11.5px; font-weight: 700; color: #ffd98a;
+    letter-spacing: 0.08em;
+    text-shadow: 0 0 6px rgba(255, 200, 110, 0.5);
+}
+#subtitle-text {
+    display: flex; align-items: center; justify-content: flex-start;
+    height: 100%; text-align: left;    /* ★左揃え */
+    white-space: pre-line;             /* 台本の改行をそのまま表示 */
+    color: #fff2d5; font-size: 13.5px; font-weight: 700; line-height: 1.62;
+    text-shadow: 0 0 8px rgba(255, 200, 110, 0.35);
+}
+
+/* ============ 🧸 ぬいぐるみバス ============ */
+.bus-marker { background: none !important; border: none !important; }
+.bus-body {
+    transform-origin: 50% 85%;
+    animation: bus-bounce 1.15s ease-in-out infinite;
+    filter: drop-shadow(0 0 10px rgba(255, 200, 110, 0.55)) drop-shadow(0 4px 5px rgba(5, 8, 25, 0.6));
+}
+.bus-marker.face-left .bus-body { transform: scaleX(-1); }
+@keyframes bus-bounce {
+    0%, 100% { translate: 0 0; }
+    50%      { translate: 0 -2.5px; }
+}
+.bus-marker.face-left .bus-body { animation-name: bus-bounce-flip; }
+@keyframes bus-bounce-flip {
+    0%, 100% { transform: scaleX(-1) translateY(0); }
+    50%      { transform: scaleX(-1) translateY(-2.5px); }
+}
+
+/* 🚏 バス停アイコン(夜のランプ標識) */
+.busstop-marker { background: none !important; border: none !important; }
+.busstop-marker svg { filter: drop-shadow(0 0 7px rgba(255, 205, 120, 0.7)); }
+
+/* 💡 街路灯のあかり */
+.lamp-marker { background: none !important; border: none !important; pointer-events: none; }
+.lamp-glow {
+    width: 100%; height: 100%; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 214, 130, 0.85) 0%, rgba(255, 180, 80, 0.32) 40%, rgba(255, 170, 70, 0) 72%);
+    animation: lamp-flicker 3.6s ease-in-out infinite;
+}
+@keyframes lamp-flicker {
+    0%, 100% { opacity: 0.85; transform: scale(1); }
+    50%      { opacity: 1;    transform: scale(1.12); }
+}
+
+/* 目的地アイコン */
+.poi-marker { background: none !important; border: none !important; }
+
+/* 🟢 luminescence: 緑の輝く輪の波紋 */
+.lum-marker { background: none !important; border: none !important; }
+.lum-ring {
+    position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+    border-radius: 50%; border: 4px solid #6ff2ae;
+    box-shadow: 0 0 14px rgba(110, 242, 174, 0.95), inset 0 0 10px rgba(110, 242, 174, 0.55);
+    animation: lum-anim 2.4s ease-out infinite;
+    box-sizing: border-box;
+}
+.lum-ring.delay1 { animation-delay: 0.8s; }
+.lum-ring.delay2 { animation-delay: 1.6s; }
+.lum-glow {
+    position: absolute; left: 30%; top: 30%; width: 40%; height: 40%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(170, 255, 210, 0.9) 0%, rgba(110, 242, 174, 0.4) 55%, rgba(110, 242, 174, 0) 75%);
+    animation: lum-glow-anim 2.4s ease-in-out infinite;
+}
+@keyframes lum-anim {
+    0%   { transform: scale(0.15); opacity: 1; }
+    100% { transform: scale(1.0);  opacity: 0; }
+}
+@keyframes lum-glow-anim {
+    0%, 100% { transform: scale(0.85); opacity: 0.75; }
+    50%      { transform: scale(1.1);  opacity: 1; }
+}
+
+/* ポップアップもメルヘン調に (MapLibre) */
+.maplibregl-popup-content {
+    background: linear-gradient(180deg, #fffdf6 0%, #fdf1d7 100%) !important;
+    color: #6b4423 !important;
+    border: 2px solid #eec27e !important; border-radius: 18px !important;
+    font-family: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', sans-serif !important;
+    box-shadow: 0 0 16px rgba(255, 200, 110, 0.35), 0 8px 18px rgba(8, 12, 34, 0.6) !important;
+    padding: 12px 16px !important;
+}
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: #fdf1d7 !important; }
+.maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: #fdf1d7 !important; }
+.maplibregl-popup-close-button { color: #b08a4e !important; font-size: 18px !important; }
+.busstop-marker { cursor: pointer; }
+.lamp-marker, .lum-marker, .poi-marker { pointer-events: none; }
+
+/* 📱 スマホ画面向けの調整 */
+@media (max-width: 480px) {
+    #status-panel { padding: 6px 12px; max-width: calc(100vw - 130px); }
+    #status-main { font-size: 13px; }
+    #status-sub  { font-size: 10px; }
+    .corner-btn { width: 42px; height: 42px; font-size: 19px; }
+    #start-btn { padding: 12px 24px; font-size: 15px; }
+    #subtitle { bottom: calc(env(safe-area-inset-bottom, 0px) + 82px); height: 168px; padding: 26px 14px 10px; }
+    #subtitle-text { font-size: 12px; line-height: 1.55; }
+    #toast { font-size: 13px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lum-ring, .lum-glow, .lamp-glow, .bus-body, .fog { animation: none; }
+}
+
+
+/* ============ 🛠 エディターMVP (?edit=1) ============ */
+#editor-bar {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 320px;
+    z-index: 2000; box-sizing: border-box; padding: 14px;
+    background: rgba(28, 24, 52, 0.94); color: #ffeec9;
+    border-left: 3px solid #e8b86d;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    display: flex; flex-direction: column; gap: 10px;
+    overflow-y: auto;
+}
+#ed-title { font-size: 15px; font-weight: 700; color: #ffd98a; }
+#ed-tabs { display: flex; gap: 6px; }
+.ed-tab { flex: 1; padding: 8px; border-radius: 10px; border: 2px solid #e8b86d;
+    background: transparent; color: #ffeec9; font-family: inherit; font-weight: 700; cursor: pointer; }
+.ed-tab.active { background: #e8b86d; color: #4a3520; }
+#ed-hint { font-size: 11px; color: #c9b58a; }
+#ed-list { flex: 1; min-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.ed-item { background: rgba(255,255,255,0.08); border: 1.5px solid rgba(232,184,109,0.4);
+    border-radius: 10px; padding: 8px 10px; font-size: 12.5px; cursor: pointer; }
+.ed-item.sel { border-color: #ffd98a; background: rgba(232,184,109,0.18); }
+.ed-item.drag { border-color: #6ff2ae; background: rgba(110,242,174,0.15); }
+.ed-drop { float: right; font-size: 10px; color: #8fa; opacity: 0.7; }
+.ed-warn { color: #ff9d8a; font-size: 11px; margin-top: 3px; }
+#ed-form { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+#ed-form label { display: flex; flex-direction: column; gap: 3px; font-weight: 700; color: #ffd98a; }
+#ed-form input, #ed-form textarea { font-family: inherit; font-size: 12.5px; border-radius: 8px;
+    border: 1.5px solid #e8b86d; padding: 6px 8px; background: #fffdf6; color: #4a3520; }
+.ed-danger { padding: 7px; border-radius: 8px; border: none; background: #c0392b; color: #fff;
+    font-family: inherit; font-weight: 700; cursor: pointer; }
+#ed-actions { display: flex; gap: 8px; }
+#ed-actions button { flex: 1; padding: 10px; border-radius: 10px; border: none;
+    background: #e8b86d; color: #4a3520; font-family: inherit; font-weight: 700; cursor: pointer; }
+/* エディターのピン */
+.ed-pin { display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+.ed-pin.dim { opacity: 0.35; }
+.ed-pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid #fff;
+    box-shadow: 0 0 8px rgba(0,0,0,0.5); }
+.ed-pin-label { margin-top: 2px; background: rgba(255,253,246,0.95); color: #4a3520;
+    font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 8px;
+    border: 1.5px solid #e8b86d; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+
+/* エディターの簡易トースト(alertの代替。地図を隠さない) */
+#ed-toast {
+    position: fixed; bottom: 24px; left: calc(50% - 160px); transform: translateX(-50%) translateY(10px);
+    z-index: 2100; max-width: 420px;
+    background: rgba(28, 24, 52, 0.94); color: #ffeec9; border: 2px solid #6ff2ae;
+    border-radius: 14px; padding: 10px 16px; font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 12.5px; line-height: 1.5; white-space: pre-line;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s ease, transform 0.3s ease;
+    box-shadow: 0 0 14px rgba(110,242,174,0.3), 0 6px 16px rgba(8,12,34,0.6);
+}
+#ed-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
