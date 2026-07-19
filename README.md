@@ -1,4 +1,4 @@
-# 🚌 オレンジゆずるバス・ナイトツアー(赤ルート) Ver 5.0 (MapLibre GL版)
+# 🚌 循環バスツアー(赤ルート) Ver 5.0 (MapLibre GL版)
 
 ## 🗺️ Ver 5.0 の大改修: ベクター地図への移行
 地図エンジンを Leaflet から **MapLibre GL + ベクタータイル(OpenFreeMap・無料/キー不要)** に移行しました。
