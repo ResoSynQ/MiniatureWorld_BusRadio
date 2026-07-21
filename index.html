@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#1c2748">
+    <title>オレンジゆずるバス・ナイトツアー</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+    <link rel="stylesheet" href="style.css?v=7.0.8" />
+</head>
+<body>
+
+    <!-- 上部ステータスパネル -->
+    <div id="status-panel">
+        <span id="status-icon">🚌</span>
+        <div id="status-texts">
+            <span id="status-main">待機中</span>
+            <span id="status-sub">スタートを押すと運行を開始します（1周 30分）</span>
+        </div>
+    </div>
+
+    <!-- 右側の操作ボタン -->
+    <button id="bgm-btn"    class="corner-btn" title="音声のオン・オフ"  style="top: calc(env(safe-area-inset-top, 0px) + 15px);">🔊</button>
+    <button id="follow-btn" class="corner-btn active" title="カメラ追従" style="top: calc(env(safe-area-inset-top, 0px) + 70px);">🎥</button>
+    <button id="post-btn"   class="corner-btn" title="投稿モード"        style="top: calc(env(safe-area-inset-top, 0px) + 125px);">✉️</button>
+    <button id="fit-btn"    class="corner-btn" title="バスの位置へ戻る"  style="top: calc(env(safe-area-inset-top, 0px) + 180px);">🗺️</button>
+    <button id="theme-btn"  class="corner-btn" title="夕方・朝の切り替え" style="top: calc(env(safe-area-inset-top, 0px) + 235px);">🌇</button>
+    <button id="reset-btn"  class="corner-btn" title="開始位置からやり直す(音声・演出は継続)" style="top: calc(env(safe-area-inset-top, 0px) + 290px);">🔁</button>
+    <button id="clear-btn"  class="corner-btn" title="すべてリセット" style="top: calc(env(safe-area-inset-top, 0px) + 345px);">🧹</button>
+    <button id="edit-btn"   class="corner-btn" title="エディターの表示・非表示" style="top: calc(env(safe-area-inset-top, 0px) + 400px);">✏️</button>
+
+    <!-- イベントメッセージ（トースト） -->
+    <div id="toast"></div>
+
+    <!-- 📻 箱庭ラジオ 字幕ウインドウ(固定サイズ) -->
+    <div id="subtitle">
+        <div id="subtitle-header">📻 箱庭ラジオ</div>
+        <span id="subtitle-text"></span>
+    </div>
+
+    <!-- ⏩ シークバー(エディター時のみ表示) -->
+    <div id="seekbar">
+        <span id="seek-time">00:00</span>
+        <input type="range" id="seek-range" min="0" max="1800" step="1" value="0">
+    </div>
+
+    <!-- 下部コントロールバー -->
+    <div id="control-bar">
+        <button id="start-btn">▶ 運行スタート</button>
+        <select id="speed-select" title="動作確認用の倍速設定">
+            <option value="1" selected>等速 (30分)</option>
+            <option value="10">10倍速 (3分)</option>
+            <option value="60">60倍速 (30秒)</option>
+        </select>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- 🌙 夜の演出レイヤー（地図の上に重ねる光・霧・にじみ） -->
+    <div id="night-ambient"></div>
+    <div id="fog-a" class="fog"></div>
+    <div id="fog-b" class="fog"></div>
+    <div id="dof-blur"></div>
+    <div id="vignette"></div>
+
+    <!-- 🎵 音声: voice.wav(開始時に1回) / bgm.mp3(任意・ループ) -->
+    <audio id="voice-audio" preload="auto"></audio>
+    <audio id="bgm-audio" loop preload="auto"></audio>
+
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="route-data.js?v=7.0.8"></script>
+    <script src="narration.js?v=7.0.8"></script>
+    <script src="week-loader.js?v=7.0.8"></script>
+</body>
+</html>
